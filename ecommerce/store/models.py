@@ -10,3 +10,11 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+class Customer(models.Model):
+    name = models.CharField(max_length=200, null=True)
+    price = models.FloatField()
+    digital = models.BooleanField(default=False, null=True, blank=False)
+
+    def __str__(self):
+        return self.name
