@@ -10,6 +10,7 @@ from .models import *
 
 
 def store(request):
+    
     if request.user.is_authenticated:
         customer = request.user.customer
         orders = Order.objects.filter(customer=customer, complete=False)
@@ -53,6 +54,8 @@ def cart(request):
 
     context = {'items': items, 'order': order, 'cartItems': cartItems}
     return render(request, 'store/cart.html', context)
+
+
 
 def checkout(request):
     if request.user.is_authenticated:
@@ -103,32 +106,38 @@ def updateItem(request):
 
     return JsonResponse('Item was added', safe=False)
 
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
 def processOrder(request):
     transaction_id = datetime.datetime.now().timestamp()
     data = json.loads(request.body)
 
     if request.user.is_authenticated:
         customer = request.user.customer
-        order, created = Order.objects.get_or_create(customer=customer, complete=False)
+        # Retrieve an incomplete order associated with the customer or create a new one
+        order = Order.objects.filter(Q(customer=customer) & Q(complete=False)).first()
+        if not order:
+            order = Order.objects.create(customer=customer, transaction_id=transaction_id)
         total = float(data['form']['total'])
-        order.transaction_id = transaction_id
 
         if total == order.get_cart_total:
             order.complete = True
-        order.save()
+            order.save()
 
-        if order.shipping == True:
-            ShippingAddress.objects.create(
-                customer=customer,
-                order=order,
-                address=data['shipping']['address'],
-                city=data['shipping']['city'],
-                state=data['shipping']['state'],
-                zipcode=data['shipping']['zipcode'],   
-            )
+            if data.get('shipping'):
+                ShippingAddress.objects.create(
+                    customer=customer,
+                    order=order,
+                    address=data['shipping']['address'],
+                    city=data['shipping']['city'],
+                    state=data['shipping']['state'],
+                    zipcode=data['shipping']['zipcode'],
+                )
+            return JsonResponse('Payment complete!', safe=False)
+        else:
+            return JsonResponse('Payment failed!', safe=False)
     else:
-        print('User is not logged in...')            
-    return JsonResponse('Payment complete!', safe=False)
-
+        print('User is not logged in...')
+        return JsonResponse('User is not logged in!', safe=False)
 
 
