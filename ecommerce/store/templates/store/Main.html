@@ -32,7 +32,7 @@
 
 	function getCookie(name){
 		// split cookie string and get all individual name=value pairs in an array
-		var cookieValue = document.cookie.split(";");
+		var cookieArr = document.cookie.split(";");
 		//Loop through the array elements
 		for (var i = 0; i < cookieArr.length; i++) {
 			var cookiePair = cookieArr[i].split("=");
@@ -45,6 +45,14 @@
 		//Return null if not found
 		return null;	
 	}
+
+	var cart = JSON.parse(getCookie('cart'));
+	if(cart == undefined){
+		cart = {}
+		console.log('Cart was created!')
+		document.cookie = 'cart=' + JSON.stringify(cart) + ";domain=;path=/"
+	}
+	console.log('Cart', cart)
 
 	</script>
 
