@@ -34,42 +34,61 @@ def store(request):
     return render(request, 'store/store.html', context)
 
 
+from django.shortcuts import render
+from store.models import Product, Order, OrderItem
+from django.db.models import Q
 
 def cart(request):
     if request.user.is_authenticated:
         customer = request.user.customer
-        orders = Order.objects.filter(customer=customer, complete=False)
-        if orders.exists():
-            order = orders.first()
-            items = order.orderitem_set.all()
-            cartItems = order.get_cart_items
-        else:
-            try:
-                cart = json.loads(request.COOKIES['cart'])
-            except:
-                cart = {}
-
-            print('cart:', cart)
-            items = []
-            order = {'get_cart_total': 0, 'get_cart_items': 0, 'shipping': False}
-            cartItems = order['get_cart_items']
-            for i in cart:
-                cartItems += cart[i]['quantity']
+        order, created = Order.objects.get_or_create(customer=customer, complete=False)
+        items = order.orderitem_set.all()
+        cartItems = order.get_cart_items
     else:
-        try:
-            cart = json.loads(request.COOKIES['cart'])
-        except:
-            cart = {}
-        print('cart:', cart)
+        cart = json.loads(request.COOKIES.get('cart', '{}'))
+
         items = []
         order = {'get_cart_total': 0, 'get_cart_items': 0}
         cartItems = order['get_cart_items']
 
-        for i in cart:
-            cartItems += cart[i]['quantity']
+        product_ids = [int(pid) for pid in cart.keys()]
+
+        # Use Q objects to filter products in cart
+        products = Product.objects.filter(Q(id__in=product_ids))
+
+        for product in products:
+            
+            try:
+
+                quantity = cart[str(product.id)]['quantity']
+                total = (product.price * quantity)
+                order['get_cart_total'] += total
+                order['get_cart_items'] += quantity
+                item = {
+                    'product': {
+                        'id': product.id,
+                        'name': product.name,
+                        'price': product.price,
+                        'imageURL': product.imageURL,
+                    },
+                    'quantity': quantity,
+                    'get_total': total,
+                }
+                items.append(item)
+
+                if product.digital == False:
+                    order['shipping'] == True
+
+            except:
+                pass
+        
+
+
+        cartItems = order['get_cart_items']
 
     context = {'items': items, 'order': order, 'cartItems': cartItems}
     return render(request, 'store/cart.html', context)
+
 
 
 
